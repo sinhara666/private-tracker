@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Private Tracker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg1:#120a18;--accent:#c99df5;--accent2:#f0a6d8;--text:#f5eefb;--muted:#a08ab5}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:radial-gradient(ellipse 80% 50% at 50% -10%,#2a1a3a 0%,var(--bg1) 60%),var(--bg1);color:var(--text);min-height:100vh;padding:20px;max-width:600px;margin:0 auto;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 15% 85%,rgba(240,166,216,.07) 0%,transparent 50%),radial-gradient(circle at 85% 15%,rgba(201,157,245,.09) 0%,transparent 50%);pointer-events:none;z-index:-1}
+h1{font-size:1.7rem;font-weight:800;margin-bottom:4px;background:linear-gradient(135deg,#c99df5,#f0a6d8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.5px}
+.sub{color:var(--muted);font-size:.85rem;margin-bottom:20px}
+.card{background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(201,157,245,.18);border-radius:18px;padding:18px;margin-bottom:16px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card h2{font-size:1.02rem;font-weight:700;margin-bottom:10px;background:linear-gradient(135deg,#c99df5,#f0a6d8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+label{display:block;font-size:.76rem;font-weight:600;color:var(--muted);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.6px}
+input,select,textarea{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.3);color:var(--text);font-size:.95rem;transition:border .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(201,157,245,.15)}
+textarea{resize:vertical;min-height:52px}
+button{width:100%;margin-top:14px;padding:13px;border:none;border-radius:14px;background:linear-gradient(135deg,#9b59d0,#d946a8);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(155,89,208,.4),inset 0 1px 0 rgba(255,255,255,.2);transition:transform .15s,box-shadow .2s}
+button:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(155,89,208,.5),inset 0 1px 0 rgba(255,255,255,.2)}
+button:active{transform:translateY(0) scale(.98)}
+button.ghost{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--muted);box-shadow:none;margin-top:8px}
+.row2{display:flex;gap:10px}.row2>div{flex:1}
+.entry{background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(201,157,245,.15);border-radius:16px;padding:16px;margin-bottom:12px;backdrop-filter:blur(10px);box-shadow:0 6px 24px rgba(0,0,0,.25);transition:transform .2s;animation:fadeUp .4s ease}
+.entry:hover{transform:translateY(-2px)}
+.entry .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.entry .date{font-weight:700;color:var(--accent)}
+.entry .del{background:rgba(255,255,255,.06);border:none;color:var(--muted);font-size:1rem;cursor:pointer;width:28px;height:28px;padding:0;margin:0;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1}
+.entry .del:hover{background:rgba(248,113,113,.2);color:#f87171}
+.entry .meta{font-size:.82rem;color:var(--muted)}
+.entry .notes{font-size:.9rem;margin-top:8px;line-height:1.5}
+.empty{text-align:center;color:var(--muted);padding:24px 0;font-size:.9rem}
+.window{background:linear-gradient(160deg,rgba(155,89,208,.15),rgba(155,89,208,.05));border:1px solid rgba(155,89,208,.4);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 8px 32px rgba(155,89,208,.2),inset 0 1px 0 rgba(255,255,255,.1);animation:fadeUp .4s ease}
+.window h3{font-size:.98rem;margin-bottom:10px;background:linear-gradient(135deg,#c99df5,#f0a6d8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.window p{font-size:.88rem;line-height:1.6}
+.window .candidate{font-weight:800;font-size:1.05rem;background:linear-gradient(135deg,#f0a6d8,#c99df5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tabs{display:flex;gap:8px;margin-bottom:18px;padding:4px;background:rgba(255,255,255,.03);border-radius:14px;border:1px solid rgba(255,255,255,.06)}
+.tabs button{flex:1;margin:0;padding:11px;font-size:.87rem;font-weight:600;background:transparent;border:none;color:var(--muted);border-radius:10px;cursor:pointer;transition:all .25s ease}
+.tabs button.active{background:linear-gradient(135deg,#9b59d0,#d946a8);color:#fff;box-shadow:0 4px 20px rgba(155,89,208,.45);transform:translateY(-1px)}
+.tabs button:not(.active):hover{color:var(--text);background:rgba(255,255,255,.05)}
+.hidden{display:none}
+.stat-grid{display:flex;gap:12px;margin-bottom:18px}
+.stat{flex:1;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(201,157,245,.18);border-radius:16px;padding:14px;text-align:center;backdrop-filter:blur(10px);box-shadow:0 6px 20px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.08);animation:fadeUp .4s ease}
+.stat .num{font-size:1.6rem;font-weight:800;background:linear-gradient(135deg,#c99df5,#f0a6d8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat .lbl{font-size:.72rem;font-weight:600;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+</style>
+</head>
+<body>
+<h1>Private Tracker</h1>
+<p class="sub">Private. Everything stays on your device.</p>
+<div class="tabs">
+<button id="tabLog" class="active" onclick="showTab('log')">Log</button>
+<button id="tabCycle" onclick="showTab('cycle')">Cycle</button>
+<button id="tabWindow" onclick="showTab('window')">Find Father</button>
+</div>
+
+<div id="panelLog">
+<div class="stat-grid">
+<div class="stat"><div class="num" id="totalCount">0</div><div class="lbl">Encounters</div></div>
+<div class="stat"><div class="num" id="partnerCount">0</div><div class="lbl">Partners</div></div>
+</div>
+<div class="card">
+<h2>Log Encounter</h2>
+<label>Date</label><input type="date" id="fDate" required>
+<div class="row2">
+<div><label>Partner name</label><input type="text" id="fPartner" placeholder="Name or nickname"></div>
+<div><label>Protection</label><select id="fProtection"><option value="">--</option><option>Yes</option><option>No</option><option>Pulled out</option></select></div>
+</div>
+<label>Notes</label><textarea id="fNotes" placeholder="Anything you want to remember..."></textarea>
+<button onclick="addEntry()">Log it</button>
+</div>
+<div id="entries"></div>
+</div>
+
+<div id="panelCycle" class="hidden">
+<div class="card">
+<h2>Your Cycle</h2>
+<label>First day of last period</label><input type="date" id="fPeriod">
+<label>Average cycle length (days)</label><input type="number" id="fCycleLen" value="28" min="21" max="40">
+<button onclick="saveCycle()">Save</button>
+</div>
+<div class="card" id="cycleInfo"><p class="empty">Enter your cycle info above.</p></div>
+</div>
+
+<div id="panelWindow" class="hidden">
+<div class="card">
+<h2>Find The Father</h2>
+<p style="font-size:.85rem;color:#a08ab5;margin-bottom:10px">Enter a due date or conception estimate and we'll show who you were with during the fertile window.</p>
+<label>Due date (if pregnant)</label><input type="date" id="fDue">
+<label>Or approximate conception date</label><input type="date" id="fConceive">
+<button onclick="findFather()">Who was it?</button>
+</div>
+<div id="windowResult"></div>
+</div>
+
+<script>
+const EK="wtf_entries",CK="wtf_cycle";
+function load(k){try{return JSON.parse(localStorage.getItem(k))||[]}catch(e){return[]}}
+function loadObj(k){try{return JSON.parse(localStorage.getItem(k))||{}}catch(e){return{}}}
+function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+let entries=load(EK),cycle=loadObj(CK);
+document.getElementById("fDate").valueAsDate=new Date();
+if(cycle.period)document.getElementById("fPeriod").value=cycle.period;
+if(cycle.len)document.getElementById("fCycleLen").value=cycle.len;
+
+function showTab(t){
+  ["log","cycle","window"].forEach(x=>{
+    document.getElementById("panel"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hidden",x!==t);
+    document.getElementById("tab"+x[0].toUpperCase()+x.slice(1)).classList.toggle("active",x===t);
+  });
+  if(t==="cycle")renderCycle();
+}
+function addEntry(){
+  const d=document.getElementById("fDate").value;
+  if(!d){alert("Pick a date");return}
+  entries.push({date:d,partner:document.getElementById("fPartner").value.trim(),protection:document.getElementById("fProtection").value,notes:document.getElementById("fNotes").value.trim()});
+  save(EK,entries);
+  document.getElementById("fPartner").value="";document.getElementById("fProtection").value="";document.getElementById("fNotes").value="";
+  document.getElementById("fDate").valueAsDate=new Date();
+  render();
+}
+function delEntry(i){if(confirm("Delete this entry?")){entries.splice(i,1);save(EK,entries);render()}}
+function saveCycle(){
+  cycle={period:document.getElementById("fPeriod").value,len:+document.getElementById("fCycleLen").value||28};
+  save(CK,cycle);renderCycle();
+}
+function renderCycle(){
+  const el=document.getElementById("cycleInfo");
+  if(!cycle.period){el.innerHTML='<p class="empty">Enter your cycle info above.</p>';return}
+  const p=new Date(cycle.period+"T12:00:00"),len=cycle.len;
+  const ov=new Date(p);ov.setDate(ov.getDate()+len-14);
+  const f0=new Date(ov);f0.setDate(f0.getDate()-5);
+  const f1=new Date(ov);f1.setDate(f1.getDate()+1);
+  const fmt=d=>d.toLocaleDateString(undefined,{month:"short",day:"numeric"});
+  el.innerHTML=`<p style="font-size:.9rem;line-height:1.7">Estimated ovulation: <strong style="color:#c99df5">${fmt(ov)}</strong><br>Fertile window: <strong style="color:#c99df5">${fmt(f0)} - ${fmt(f1)}</strong><br><span style="font-size:.8rem;color:#a08ab5">Based on a ${len}-day cycle. Sperm can survive up to 5 days.</span></p>`;
+}
+function findFather(){
+  const el=document.getElementById("windowResult");
+  const due=document.getElementById("fDue").value,con=document.getElementById("fConceive").value;
+  let cDate=null;
+  if(con)cDate=new Date(con+"T12:00:00");
+  else if(due){cDate=new Date(due+"T12:00:00");cDate.setDate(cDate.getDate()-266)}
+  else{el.innerHTML='<div class="window"><p>Enter a due date or conception date above.</p></div>';return}
+  const w0=new Date(cDate);w0.setDate(w0.getDate()-5);
+  const w1=new Date(cDate);w1.setDate(w1.getDate()+1);
+  const fmt=d=>d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+  const matches=entries.filter(e=>{const d=new Date(e.date+"T12:00:00");return d>=w0&&d<=w1});
+  const unprot=matches.filter(e=>e.protection!=="Yes");
+  let html=`<div class="window"><h3>Fertile window: ${fmt(w0)} - ${fmt(w1)}</h3>`;
+  if(!matches.length){
+    html+=`<p>No encounters logged during this window. <span style="color:#a08ab5">Check your dates, you may have missed logging some.</span></p>`;
+  }else{
+    const names=[...new Set(unprot.map(e=>e.partner||"Unnamed"))];
+    if(names.length===1)html+=`<p>Likely father: <span class="candidate">${esc(names[0])}</span></p>`;
+    else if(names.length>1)html+=`<p>Possible fathers: <span class="candidate">${names.map(esc).join(", ")}</span></p><p style="margin-top:8px;font-size:.82rem;color:#a08ab5">Multiple partners in the window. A DNA test is the only way to know for sure.</p>`;
+    else html+=`<p>Encounters found but all were marked as protected.</p>`;
+    html+=`<p style="margin-top:10px;font-size:.82rem;color:#a08ab5">${matches.length} encounter${matches.length>1?"s":""} in window:</p>`;
+    html+=matches.map(e=>`<p style="font-size:.85rem;margin-top:4px">• ${fmt(new Date(e.date+"T12:00:00"))} - ${esc(e.partner||"Unnamed")} (${esc(e.protection||"no protection info")})</p>`).join("");
+  }
+  html+=`</div>`;
+  el.innerHTML=html;
+}
+function render(){
+  entries.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById("totalCount").textContent=entries.length;
+  document.getElementById("partnerCount").textContent=new Set(entries.map(e=>(e.partner||"").toLowerCase())).size;
+  const el=document.getElementById("entries");
+  if(!entries.length){el.innerHTML='<div class="empty">No entries yet.</div>';return}
+  el.innerHTML=entries.map((e,i)=>{
+    const dt=new Date(e.date+"T12:00:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric",year:"numeric"});
+    let meta=[];
+    if(e.partner)meta.push(esc(e.partner));
+    if(e.protection)meta.push(e.protection==="Yes"?"Protected":e.protection==="No"?"Unprotected":"Pulled out");
+    return `<div class="entry"><div class="top"><span class="date">${dt}</span><button class="del" onclick="delEntry(${i})">×</button></div>${meta.length?`<div class="meta">${meta.join(" · ")}</div>`:""}${e.notes?`<div class="notes">${esc(e.notes)}</div>`:""}</div>`;
+  }).join("");
+}
+render();
+</script>
+</body>
+</html>
