@@ -53,7 +53,7 @@ button.ghost{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,
 <div class="tabs">
 <button id="tabLog" class="active" onclick="showTab('log')">Log</button>
 <button id="tabCycle" onclick="showTab('cycle')">Cycle</button>
-<button id="tabWindow" onclick="showTab('window')">Find Father</button>
+<button id="tabWindow" onclick="showTab('window')">Possibilities</button>
 </div>
 
 <div id="panelLog">
@@ -86,11 +86,11 @@ button.ghost{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,
 
 <div id="panelWindow" class="hidden">
 <div class="card">
-<h2>Find The Father</h2>
-<p style="font-size:.85rem;color:#a08ab5;margin-bottom:10px">Enter a due date or conception estimate and we'll show who you were with during the fertile window.</p>
+<h2>Possible Matches</h2>
+<p style="font-size:.85rem;color:#a08ab5;margin-bottom:10px">Enter a due date or a conception estimate and we'll show which logged encounters fall in the plausible conception window. Dates are estimates, this cannot confirm or rule out paternity.</p>
 <label>Due date (if pregnant)</label><input type="date" id="fDue">
 <label>Or approximate conception date</label><input type="date" id="fConceive">
-<button onclick="findFather()">Who was it?</button>
+<button onclick="checkWindow()">Check the window</button>
 </div>
 <div id="windowResult"></div>
 </div>
@@ -135,32 +135,54 @@ function renderCycle(){
   const f0=new Date(ov);f0.setDate(f0.getDate()-5);
   const f1=new Date(ov);f1.setDate(f1.getDate()+1);
   const fmt=d=>d.toLocaleDateString(undefined,{month:"short",day:"numeric"});
-  el.innerHTML=`<p style="font-size:.9rem;line-height:1.7">Estimated ovulation: <strong style="color:#c99df5">${fmt(ov)}</strong><br>Fertile window: <strong style="color:#c99df5">${fmt(f0)} - ${fmt(f1)}</strong><br><span style="font-size:.8rem;color:#a08ab5">Based on a ${len}-day cycle. Sperm can survive up to 5 days.</span></p>`;
+  el.innerHTML=`<p style="font-size:.9rem;line-height:1.7">Estimated ovulation: <strong style="color:#c99df5">${fmt(ov)}</strong><br>Fertile window: <strong style="color:#c99df5">${fmt(f0)} - ${fmt(f1)}</strong><br><span style="font-size:.8rem;color:#a08ab5">Based on a ${len}-day cycle. Sperm can survive up to 5 days. Ovulation dates are estimates and can shift by a few days.</span></p>`;
 }
-function findFather(){
+function conceptionFromDue(dueStr){
+  const c=new Date(dueStr+"T12:00:00");c.setDate(c.getDate()-266);return c;
+}
+function conceptionWindow(c){
+  const d=n=>{const x=new Date(c);x.setDate(x.getDate()+n);return x};
+  return {core0:d(-5),core1:d(1),near0:d(-7),near1:d(3)};
+}
+function windowTier(dateStr,c){
+  const d=new Date(dateStr+"T12:00:00"),w=conceptionWindow(c);
+  if(d>=w.core0&&d<=w.core1)return "core";
+  if(d>=w.near0&&d<=w.near1)return "near";
+  return "out";
+}
+function checkWindow(){
   const el=document.getElementById("windowResult");
   const due=document.getElementById("fDue").value,con=document.getElementById("fConceive").value;
-  let cDate=null;
-  if(con)cDate=new Date(con+"T12:00:00");
-  else if(due){cDate=new Date(due+"T12:00:00");cDate.setDate(cDate.getDate()-266)}
-  else{el.innerHTML='<div class="window"><p>Enter a due date or conception date above.</p></div>';return}
-  const w0=new Date(cDate);w0.setDate(w0.getDate()-5);
-  const w1=new Date(cDate);w1.setDate(w1.getDate()+1);
   const fmt=d=>d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
-  const matches=entries.filter(e=>{const d=new Date(e.date+"T12:00:00");return d>=w0&&d<=w1});
-  const unprot=matches.filter(e=>e.protection!=="Yes");
-  let html=`<div class="window"><h3>Fertile window: ${fmt(w0)} - ${fmt(w1)}</h3>`;
-  if(!matches.length){
-    html+=`<p>No encounters logged during this window. <span style="color:#a08ab5">Check your dates, you may have missed logging some.</span></p>`;
-  }else{
-    const names=[...new Set(unprot.map(e=>e.partner||"Unnamed"))];
-    if(names.length===1)html+=`<p>Likely father: <span class="candidate">${esc(names[0])}</span></p>`;
-    else if(names.length>1)html+=`<p>Possible fathers: <span class="candidate">${names.map(esc).join(", ")}</span></p><p style="margin-top:8px;font-size:.82rem;color:#a08ab5">Multiple partners in the window. A DNA test is the only way to know for sure.</p>`;
-    else html+=`<p>Encounters found but all were marked as protected.</p>`;
-    html+=`<p style="margin-top:10px;font-size:.82rem;color:#a08ab5">${matches.length} encounter${matches.length>1?"s":""} in window:</p>`;
-    html+=matches.map(e=>`<p style="font-size:.85rem;margin-top:4px">• ${fmt(new Date(e.date+"T12:00:00"))} - ${esc(e.partner||"Unnamed")} (${esc(e.protection||"no protection info")})</p>`).join("");
+  let cDate=null,estNote="";
+  if(con){cDate=new Date(con+"T12:00:00");estNote="Using the conception date you entered. Treat it as an estimate, actual ovulation can fall a few days either side."}
+  else if(due){cDate=conceptionFromDue(due);estNote="Conception estimated at about 266 days before the due date, around "+fmt(cDate)+". This is an estimate, actual conception can fall a few days either side."}
+  else{el.innerHTML='<div class="window"><p>Enter a due date or conception date above.</p></div>';return}
+  const w=conceptionWindow(cDate);
+  const core=entries.filter(e=>windowTier(e.date,cDate)==="core");
+  const near=entries.filter(e=>windowTier(e.date,cDate)==="near");
+  const isRisk=e=>e.protection==="No"||e.protection==="Pulled out"||!e.protection;
+  const coreRisk=core.filter(isRisk),nearRisk=near.filter(isRisk);
+  let html=`<div class="window"><h3>Estimated fertile window: ${fmt(w.core0)} - ${fmt(w.core1)}</h3>`;
+  html+=`<p style="font-size:.82rem;color:#a08ab5">${estNote} The window is set by sperm surviving up to about 5 days and the egg about a day.</p>`;
+  if(coreRisk.length){
+    const names=[...new Set(coreRisk.map(e=>e.partner||"Unnamed"))];
+    html+=`<p style="margin-top:10px">Possible matches in the window: <span class="candidate">${names.map(esc).join(", ")}</span></p>`;
   }
-  html+=`</div>`;
+  if(nearRisk.length){
+    const names=[...new Set(nearRisk.map(e=>e.partner||"Unnamed"))];
+    html+=`<p style="margin-top:8px">Just outside the window, too close to rule out if the dates are off: <span class="candidate">${names.map(esc).join(", ")}</span></p>`;
+  }
+  if(!coreRisk.length&&!nearRisk.length){
+    if(core.length||near.length)html+=`<p style="margin-top:10px">Encounters were logged in or near this window, but all were marked protected. Protection lowers the chance a lot, but it is not 100%.</p>`;
+    else html+=`<p style="margin-top:10px">No encounters logged in or near this window. Check your dates, you may have missed logging some.</p>`;
+  }
+  const all=core.map(e=>({e,t:"In window"})).concat(near.map(e=>({e,t:"Near window"}))).sort((a,b)=>new Date(a.e.date)-new Date(b.e.date));
+  if(all.length){
+    html+=`<p style="margin-top:10px;font-size:.82rem;color:#a08ab5">${all.length} encounter${all.length>1?"s":""}:</p>`;
+    html+=all.map(x=>`<p style="font-size:.85rem;margin-top:4px">• ${fmt(new Date(x.e.date+"T12:00:00"))} - ${esc(x.e.partner||"Unnamed")} (${esc(x.e.protection||"no protection info")}) - ${x.t}</p>`).join("");
+  }
+  html+=`<p style="margin-top:12px;font-size:.82rem;color:#a08ab5">These dates are estimates only. This cannot confirm who the father is, and it cannot rule anyone out for certain. A DNA test is the only way to know for sure.</p></div>`;
   el.innerHTML=html;
 }
 function render(){
